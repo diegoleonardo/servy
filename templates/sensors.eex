@@ -1,0 +1,12 @@
+<h1>All The Sensors!</h1>
+
+<ul>
+    <%= for sensor <- sensors do %>
+    <li> <%= sensor %> </li>
+    <% end %>
+</ul>
+
+<h1>Locations</h1>
+<ul>
+    <li> <%= location.lat %> - <%= location.lng %> </li>
+</ul>
