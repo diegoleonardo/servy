@@ -1,31 +1,41 @@
 defmodule Servy.PledgeServer do
+  use GenServer
+  alias StatePledge
+
   # alias HTTPoison
-  alias Servy.GenericServer
   @name :pledge_server
 
   # CLIENTE INTERFACE FUNCTIONS
   def start() do
-    IO.puts("Starting the pledge server...")
-    GenericServer.start(__MODULE__, [], @name)
+    # StatePledge{} é o argumento passado para a função init
+    GenServer.start(__MODULE__, %StatePledge{}, name: @name)
   end
 
   def create_pledge(name, amount) do
-    GenericServer.call(@name, {:create_pledge, name, amount})
+    GenServer.call(@name, {:create_pledge, name, amount})
   end
 
   def recent_pledges do
-    GenericServer.call(@name, :recent_pledges)
+    GenServer.call(@name, :recent_pledges)
   end
 
   def total_pledged do
-    GenericServer.call(@name, :total_pledged)
+    GenServer.call(@name, :total_pledged)
+  end
+
+  def get_cache_size do
+    GenServer.call(@name, :get_cache_size)
   end
 
   def clear do
-    GenericServer.cast(@name, :clear)
+    GenServer.cast(@name, :clear)
   end
 
-  def send_pledge_to_service(_name, _amount) do
+  def set_cache_size(size) do
+    GenServer.cast(@name, {:set_cache_size, size})
+  end
+
+  defp send_pledge_to_service(_name, _amount) do
     # CODE GOES HERE TO SEND PLEDGE TO EXTERNAL SERVICE
     # url = "https://putsreq.com/gSjF80g1XBYIxaUak32L"
     # body = ~s({"name": #{name}, "amount": #{amount}})
@@ -36,25 +46,54 @@ defmodule Servy.PledgeServer do
     {:ok, "pledge-#{:rand.uniform(1000)}"}
   end
 
+  defp fetch_recent_pledges_from_service do
+    # CODE GOES HERE TO FETCH RECENT PLEDGES FROM EXTERNAL SERVICE
+
+    # Example return value:
+    [{"wilma", 15}, {"fred", 25}]
+  end
+
   # SERVER CALLBACKS
-  def handle_cast(:clear, _state) do
-    []
+  def init(state) do
+    pledges = fetch_recent_pledges_from_service()
+    new_state = %{state | pledges: pledges}
+    {:ok, new_state}
   end
 
-  def handle_call(:recent_pledges, state) do
-    {state, state}
+  def handle_cast(:clear, state) do
+    {:noreply, %{state | pledges: []}}
   end
 
-  def handle_call(:total_pledged, state) do
-    total = Enum.map(state, &elem(&1, 1)) |> Enum.sum()
-    {total, state}
+  def handle_cast({:set_cache_size, size}, state) do
+    resized_cache = Enum.take(state.pledges, size)
+    new_state = %{state | cache_size: size, pledges: resized_cache}
+    {:noreply, new_state}
   end
 
-  def handle_call({:create_pledge, name, amount}, state) do
+  def handle_call(:recent_pledges, _from, state) do
+    {:reply, state.pledges, state}
+  end
+
+  def handle_call(:get_cache_size, _from, state) do
+    {:reply, state.cache_size, state}
+  end
+
+  def handle_call(:total_pledged, _from, state) do
+    total = Enum.map(state.pledges, &elem(&1, 1)) |> Enum.sum()
+    {:reply, total, state}
+  end
+
+  def handle_call({:create_pledge, name, amount}, _from, state) do
     {:ok, id} = send_pledge_to_service(name, amount)
-    most_recent_pledges = Enum.take(state, 2)
-    new_state = [{name, amount} | most_recent_pledges]
-    {id, new_state}
+    most_recent_pledges = Enum.take(state.pledges, state.cache_size - 1)
+    cached_pledges = [{name, amount} | most_recent_pledges]
+    new_state = %{state | pledges: cached_pledges}
+    {:reply, id, new_state}
+  end
+
+  def handle_info(message, state) do
+    IO.puts("Can't touch this! #{inspect(message)}")
+    {:noreply, state}
   end
 end
 
@@ -76,12 +115,14 @@ end
 
 # send pid, {:stop, "hammertime"}
 
-# IO.inspect PledgeServer.create_pledge("larry", 10)
-# IO.inspect PledgeServer.create_pledge("moe", 20)
-# IO.inspect PledgeServer.create_pledge("curly", 30)
-# IO.inspect PledgeServer.create_pledge("daisy", 40)
-# IO.inspect PledgeServer.create_pledge("grace", 50)
+# {:ok, pid} = PledgeServer.start()
 
-# IO.inspect PledgeServer.recent_pledges()
+# IO.inspect(PledgeServer.create_pledge("larry", 10))
+# IO.inspect(PledgeServer.create_pledge("moe", 20))
+# IO.inspect(PledgeServer.create_pledge("curly", 30))
+# IO.inspect(PledgeServer.create_pledge("daisy", 40))
+# IO.inspect(PledgeServer.create_pledge("grace", 50))
 
-# IO.inspect PledgeServer.total_pledged()
+# IO.inspect(PledgeServer.recent_pledges())
+
+# IO.inspect(PledgeServer.total_pledged())
