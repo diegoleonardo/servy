@@ -6,10 +6,11 @@ defmodule Servy.PledgeServer do
   @name :pledge_server
 
   # CLIENTE INTERFACE FUNCTIONS
-  @spec start() :: :ignore | {:error, any()} | {:ok, pid()}
-  def start() do
+
+  def start_link(_args) do
+    IO.puts("Starting the Pledge Server...")
     # StatePledge{} é o argumento passado para a função init
-    GenServer.start(__MODULE__, %StatePledge{}, name: @name)
+    GenServer.start_link(__MODULE__, %StatePledge{}, name: @name)
   end
 
   def create_pledge(name, amount) do

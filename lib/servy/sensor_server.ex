@@ -3,10 +3,14 @@ defmodule Servy.SensorServer do
 
   use GenServer
   alias Servy.StateSensor
+
   # Client Interface
 
-  def start do
-    GenServer.start(__MODULE__, %StateSensor{}, name: @name)
+  def start_link(interval) do
+    IO.puts("Starting the Sensor Server...")
+    IO.puts("Starting the sensor server with #{interval} seconds refresh...")
+    initial_state = %StateSensor{refresh_interval: interval}
+    GenServer.start_link(__MODULE__, initial_state, name: @name)
   end
 
   def get_sensor_data do
@@ -61,5 +65,35 @@ defmodule Servy.SensorServer do
     where_is_bigfoot = Task.await(task)
 
     %{snapshots: snapshots, location: where_is_bigfoot}
+  end
+
+  def child_spec(:frequent) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [1]},
+      restart: :permanent,
+      shutdown: 5000,
+      type: :worker
+    }
+  end
+
+  def child_spec(:infrequent) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [60]},
+      restart: :permanent,
+      shutdown: 5000,
+      type: :worker
+    }
+  end
+
+  def child_spec(_) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, []},
+      restart: :permanent,
+      shutdown: 5000,
+      type: :worker
+    }
   end
 end

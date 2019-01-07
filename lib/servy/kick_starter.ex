@@ -3,8 +3,8 @@ defmodule Servy.KickStarter do
   alias Servy.HttpServer
   @name __MODULE__
 
-  def start do
-    GenServer.start(@name, :ok, name: @name)
+  def start_link(_args) do
+    GenServer.start_link(@name, :ok, name: @name)
   end
 
   def get_server do
@@ -28,7 +28,7 @@ defmodule Servy.KickStarter do
   end
 
   defp start_server do
-    server_pid = spawn_link(Servy.HttpServer, :start, [4000])
+    server_pid = spawn_link(HttpServer, :start, [4000])
     Process.register(server_pid, :http_server)
     server_pid
   end
