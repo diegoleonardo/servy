@@ -1,11 +1,12 @@
 defmodule Servy.PledgeServer do
   use GenServer
-  alias StatePledge
+  alias Servy.StatePledge
 
   # alias HTTPoison
   @name :pledge_server
 
   # CLIENTE INTERFACE FUNCTIONS
+  @spec start() :: :ignore | {:error, any()} | {:ok, pid()}
   def start() do
     # StatePledge{} é o argumento passado para a função init
     GenServer.start(__MODULE__, %StatePledge{}, name: @name)
